@@ -15,7 +15,7 @@ from efficientnet_image_detector import DetectorInference
 # CONFIGURATION
 # ==============================
 
-MODEL_PATH = r"models\final_model_2.pth"
+MODEL_PATH = "models/final_model_2.pth"
 DEVICE = "auto"
 IMAGE_SIZE = 380
 
