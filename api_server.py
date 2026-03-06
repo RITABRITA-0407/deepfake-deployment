@@ -15,7 +15,7 @@ from efficientnet_image_detector import DetectorInference
 # CONFIGURATION
 # ==============================
 
-MODEL_PATH = "../deepfake-model-training/models/final_model_2.pth"
+MODEL_PATH = "models/final_model_2.pth"
 DEVICE = "auto"
 IMAGE_SIZE = 380
 
@@ -33,26 +33,53 @@ detector = None
 # LIFESPAN HANDLER (NEW METHOD)
 # ==============================
 
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     global detector
+#
+#     if not os.path.exists(MODEL_PATH):
+#         logger.error(f"Model not found at {MODEL_PATH}")
+#         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+#
+#     logger.info("Loading model...")
+#     detector = DetectorInference(
+#         model_path=MODEL_PATH,
+#         device=DEVICE,
+#         image_size=IMAGE_SIZE
+#     )
+#     logger.info("Model loaded successfully.")
+#
+#     yield
+#
+#     logger.info("Shutting down API...")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global detector
 
+    print(">>> Lifespan started")
+    print(f">>> MODEL_PATH = {MODEL_PATH}")
+    print(f">>> File exists: {os.path.exists(MODEL_PATH)}")
+
     if not os.path.exists(MODEL_PATH):
-        logger.error(f"Model not found at {MODEL_PATH}")
+        print(">>> ERROR: Model file not found!")
         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
 
-    logger.info("Loading model...")
-    detector = DetectorInference(
-        model_path=MODEL_PATH,
-        device=DEVICE,
-        image_size=IMAGE_SIZE
-    )
-    logger.info("Model loaded successfully.")
+    print(">>> Loading model...")
+    try:
+        detector = DetectorInference(
+            model_path=MODEL_PATH,
+            device=DEVICE,
+            image_size=IMAGE_SIZE
+        )
+        print(">>> Model loaded successfully!")
+    except Exception as e:
+        print(f">>> CRASH during model load: {e}")
+        raise
 
     yield
 
-    logger.info("Shutting down API...")
-
+    print(">>> Shutting down...")
 
 app = FastAPI(
     title="Deepfake Image Detection API",
@@ -114,13 +141,24 @@ async def predict_image(file: UploadFile = File(...)):
 # RUN SERVER
 # ==============================
 
+# if __name__ == "__main__":
+#     uvicorn.run(
+#         "api_server:app",   # IMPORTANT: match filename
+#         host="0.0.0.0",
+#         port=8000,
+#         reload=False
+#     )
+
 if __name__ == "__main__":
+    is_production = os.getenv("RAILWAY_ENVIRONMENT") is not None  # Railway sets this automatically
+
     uvicorn.run(
-        "api_server:app",   # IMPORTANT: match filename
-        host="127.0.0.1",
-        port=8000,
-        reload=True
+        "api_server:app",
+        host="0.0.0.0" if is_production else "127.0.0.1",
+        port=int(os.getenv("PORT", 8000)),  # Railway also sets PORT automatically
+        reload=not is_production
     )
+
 
 # import os
 # import io
