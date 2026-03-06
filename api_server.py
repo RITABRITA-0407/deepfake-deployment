@@ -165,7 +165,7 @@ def ensure_model_exists():
         hf_hub_download(
             repo_id="RK-2910/deepfake-efficientnet-b4",
             filename="models/final_model_2.pth",
-            local_dir="models"
+            local_dir="."
         )
         print(">>> Model downloaded successfully.")
     else:
