@@ -1,0 +1,135 @@
+## created by virtualenv automatically
+#
+## ==============================
+## Python
+## ==============================
+#__pycache__/
+#*.py[cod]
+#*$py.class
+#
+## Build
+#build/
+#dist/
+#*.egg-info/
+#.eggs/
+#
+## ==============================
+## Virtual Environment
+## ==============================
+#.venv/
+#venv/
+#env/
+#ENV/
+#
+## ==============================
+## PyCharm
+## ==============================
+#.idea/
+#*.iml
+#
+## ==============================
+## Logs
+## ==============================
+#logs/
+#*.log
+#
+## ==============================
+## OS
+## ==============================
+#.DS_Store
+#Thumbs.db
+#
+## ==============================
+## Jupyter
+## ==============================
+#.ipynb_checkpoints/
+#
+#
+#
+## Dataset
+#data/
+#
+#eval_outputs/
+#
+#
+
+# ============================================================
+# .gitignore for Repo 2: deepfake-detector-api
+# ============================================================
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+
+
+# ── Virtual Environments ─────────────────────────────────────
+../.venv/
+venv/
+env/
+ENV/
+.env
+
+# ── PyCharm / JetBrains ──────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+
+
+# ── Jupyter ──────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+
+
+# Keep the models/ folder itself
+!models/.gitkeep
+
+# ── Uploaded / Temp Images ───────────────────────────────────
+# Images submitted to the API at runtime
+uploads/
+temp/
+tmp/
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.webp
+
+# Exception: Keep any sample/test images you explicitly add
+!samples/
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Data & Datasets ──────────────────────────────────────────
+# The API repo doesn't need raw training data
+data/
+*.csv
+*.zip
+*.tar
+*.tar.gz
+
+# ── OS Files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secrets / Credentials ────────────────────────────────────
+*.env
+
+
+# ── Railway / Docker ─────────────────────────────────────────
+# Uncomment if you use Docker locally and don't want to commit:
+# Dockerfile.local
+# docker-compose.override.yml
