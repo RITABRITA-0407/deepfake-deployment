@@ -15,7 +15,7 @@ from efficientnet_image_detector import DetectorInference
 # CONFIGURATION
 # ==============================
 
-MODEL_PATH = "../deepfake-model-training/models/final_model_2.pth"
+MODEL_PATH = "../deepfake-deployment/models/final_model_2.pth"
 DEVICE = "auto"
 IMAGE_SIZE = 380
 
