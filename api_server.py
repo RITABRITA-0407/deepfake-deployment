@@ -1,3 +1,127 @@
+# # import os
+# # import io
+# # import logging
+# # from contextlib import asynccontextmanager
+# #
+# # import torch
+# # from fastapi import FastAPI, UploadFile, File, HTTPException
+# # from fastapi.responses import JSONResponse
+# # from PIL import Image
+# # import uvicorn
+# #
+# # from efficientnet_image_detector import DetectorInference
+# #
+# # # ==============================
+# # # CONFIGURATION
+# # # ==============================
+# #
+# # MODEL_PATH = "../deepfake-model-training/models/final_model_2.pth"
+# # DEVICE = "auto"
+# # IMAGE_SIZE = 380
+# #
+# # # ==============================
+# # # LOGGING
+# # # ==============================
+# #
+# # logging.basicConfig(level=logging.INFO)
+# # logger = logging.getLogger(__name__)
+# #
+# # detector = None
+# #
+# #
+# # # ==============================
+# # # LIFESPAN HANDLER (NEW METHOD)
+# # # ==============================
+# #
+# # @asynccontextmanager
+# # async def lifespan(app: FastAPI):
+# #     global detector
+# #
+# #     if not os.path.exists(MODEL_PATH):
+# #         logger.error(f"Model not found at {MODEL_PATH}")
+# #         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+# #
+# #     logger.info("Loading model...")
+# #     detector = DetectorInference(
+# #         model_path=MODEL_PATH,
+# #         device=DEVICE,
+# #         image_size=IMAGE_SIZE
+# #     )
+# #     logger.info("Model loaded successfully.")
+# #
+# #     yield
+# #
+# #     logger.info("Shutting down API...")
+# #
+# #
+# # app = FastAPI(
+# #     title="Deepfake Image Detection API",
+# #     version="1.0.0",
+# #     lifespan=lifespan
+# # )
+# #
+# #
+# # # ==============================
+# # # HEALTH CHECK
+# # # ==============================
+# #
+# # @app.get("/")
+# # def root():
+# #     return {"status": "API running", "model_loaded": detector is not None}
+# #
+# #
+# # # ==============================
+# # # SINGLE IMAGE PREDICTION
+# # # ==============================
+# #
+# # @app.post("/predict")
+# # async def predict_image(file: UploadFile = File(...)):
+# #     if detector is None:
+# #         raise HTTPException(status_code=500, detail="Model not loaded")
+# #
+# #     if not file.content_type.startswith("image/"):
+# #         raise HTTPException(status_code=400, detail="File must be an image")
+# #
+# #     try:
+# #         contents = await file.read()
+# #         image = Image.open(io.BytesIO(contents)).convert("RGB")
+# #
+# #         transform = detector.transform
+# #         image_tensor = transform(image).unsqueeze(0).to(detector.device)
+# #
+# #         detector.model.eval()
+# #         with torch.no_grad():
+# #             logits = detector.model(image_tensor)
+# #             probabilities = torch.softmax(logits, dim=1)
+# #
+# #         predicted_class = torch.argmax(probabilities, dim=1).item()
+# #         confidence = probabilities[0, predicted_class].item()
+# #
+# #         return JSONResponse({
+# #             "filename": file.filename,
+# #             "verdict": "DEEPFAKE" if predicted_class == 1 else "REAL",
+# #             "confidence": float(confidence),
+# #             "real_probability": float(probabilities[0, 0].item()),
+# #             "fake_probability": float(probabilities[0, 1].item())
+# #         })
+# #
+# #     except Exception as e:
+# #         logger.error(f"Prediction error: {e}")
+# #         raise HTTPException(status_code=500, detail=str(e))
+# #
+# #
+# # # ==============================
+# # # RUN SERVER
+# # # ==============================
+# #
+# # if __name__ == "__main__":
+# #     uvicorn.run(
+# #         "api_server:app",   # IMPORTANT: match filename
+# #         host="127.0.0.1",
+# #         port=8000,
+# #         reload=True
+# #     )
+#
 # import os
 # import io
 # import logging
@@ -8,6 +132,7 @@
 # from fastapi.responses import JSONResponse
 # from PIL import Image
 # import uvicorn
+# from huggingface_hub import hf_hub_download
 #
 # from efficientnet_image_detector import DetectorInference
 #
@@ -15,7 +140,7 @@
 # # CONFIGURATION
 # # ==============================
 #
-# MODEL_PATH = "../deepfake-model-training/models/final_model_2.pth"
+# MODEL_PATH = r"C:\Users\RITABRITA\Downloads\PythonProject\PythonProject\deepfake-image-detector\models\final_model_2.pth"
 # DEVICE = "auto"
 # IMAGE_SIZE = 380
 #
@@ -30,28 +155,55 @@
 #
 #
 # # ==============================
-# # LIFESPAN HANDLER (NEW METHOD)
+# # MODEL DOWNLOAD (HuggingFace)
+# # ==============================
+#
+# def ensure_model_exists():
+#     if not os.path.exists(MODEL_PATH) or os.path.getsize(MODEL_PATH) < 1_000_000:
+#         print(">>> Model not found locally. Downloading from Hugging Face...")
+#         os.makedirs("models", exist_ok=True)
+#         hf_hub_download(
+#             repo_id="RK-2910/deepfake-efficientnet-b4",
+#             filename="models/final_model_2.pth",
+#             local_dir="."
+#         )
+#         print(">>> Model downloaded successfully.")
+#     else:
+#         print(">>> Model already exists locally. Skipping download.")
+#
+#
+# # ==============================
+# # LIFESPAN HANDLER
 # # ==============================
 #
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
 #     global detector
 #
-#     if not os.path.exists(MODEL_PATH):
-#         logger.error(f"Model not found at {MODEL_PATH}")
-#         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+#     print(">>> Lifespan started")
+#     print(f">>> MODEL_PATH = {MODEL_PATH}")
 #
-#     logger.info("Loading model...")
-#     detector = DetectorInference(
-#         model_path=MODEL_PATH,
-#         device=DEVICE,
-#         image_size=IMAGE_SIZE
-#     )
-#     logger.info("Model loaded successfully.")
+#     # Download model if not present
+#     ensure_model_exists()
+#
+#     print(f">>> File exists: {os.path.exists(MODEL_PATH)}")
+#     print(f">>> File size: {os.path.getsize(MODEL_PATH) / 1_000_000:.1f} MB")
+#
+#     print(">>> Loading model...")
+#     try:
+#         detector = DetectorInference(
+#             model_path=MODEL_PATH,
+#             device=DEVICE,
+#             image_size=IMAGE_SIZE
+#         )
+#         print(">>> Model loaded successfully!")
+#     except Exception as e:
+#         print(f">>> CRASH during model load: {e}")
+#         raise
 #
 #     yield
 #
-#     logger.info("Shutting down API...")
+#     print(">>> Shutting down...")
 #
 #
 # app = FastAPI(
@@ -100,7 +252,7 @@
 #         return JSONResponse({
 #             "filename": file.filename,
 #             "verdict": "DEEPFAKE" if predicted_class == 1 else "REAL",
-#             "confidence": float(confidence),
+#             "probability": float(confidence),
 #             "real_probability": float(probabilities[0, 0].item()),
 #             "fake_probability": float(probabilities[0, 1].item())
 #         })
@@ -115,12 +267,167 @@
 # # ==============================
 #
 # if __name__ == "__main__":
+#     is_production = os.getenv("RAILWAY_ENVIRONMENT") is not None
+#
 #     uvicorn.run(
-#         "api_server:app",   # IMPORTANT: match filename
-#         host="127.0.0.1",
-#         port=8000,
-#         reload=True
+#         "api_server:app",
+#         host="0.0.0.0" if is_production else "127.0.0.1",
+#         port=int(os.getenv("PORT", 8000)),
+#         reload=not is_production
 #     )
+
+
+
+# import os
+# import io
+# import logging
+# from contextlib import asynccontextmanager
+#
+# import torch
+# from fastapi import FastAPI, UploadFile, File, HTTPException
+# from fastapi.responses import JSONResponse
+# from PIL import Image
+# import uvicorn
+# from huggingface_hub import hf_hub_download
+#
+# from efficientnet_image_detector import DetectorInference
+#
+# # ==============================
+# # CONFIGURATION
+# # ==============================
+#
+# MODEL_PATH = "models/final_model_2.pth"   # relative path inside container
+# DEVICE = "cpu"                             # HF Spaces free tier = CPU only
+# IMAGE_SIZE = 380
+#
+# # ==============================
+# # LOGGING
+# # ==============================
+#
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+#
+# detector = None
+#
+#
+# # ==============================
+# # MODEL DOWNLOAD (HuggingFace)
+# # ==============================
+#
+# def ensure_model_exists():
+#     if not os.path.exists(MODEL_PATH) or os.path.getsize(MODEL_PATH) < 1_000_000:
+#         print(">>> Model not found locally. Downloading from Hugging Face...")
+#         os.makedirs("models", exist_ok=True)
+#         hf_hub_download(
+#             repo_id="RK-2910/deepfake-efficientnet-b4",
+#             filename="models/final_model_2.pth",
+#             local_dir=".",
+#             token=os.environ.get("HF_TOKEN")
+#         )
+#         print(">>> Model downloaded successfully.")
+#     else:
+#         print(">>> Model already exists locally. Skipping download.")
+#
+#
+# # ==============================
+# # LIFESPAN HANDLER
+# # ==============================
+#
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     global detector
+#
+#     print(">>> Lifespan started")
+#     print(f">>> MODEL_PATH = {MODEL_PATH}")
+#
+#     ensure_model_exists()
+#
+#     print(f">>> File exists: {os.path.exists(MODEL_PATH)}")
+#     print(f">>> File size: {os.path.getsize(MODEL_PATH) / 1_000_000:.1f} MB")
+#
+#     print(">>> Loading model...")
+#     try:
+#         detector = DetectorInference(
+#             model_path=MODEL_PATH,
+#             device=DEVICE,
+#             image_size=IMAGE_SIZE
+#         )
+#         print(">>> Model loaded successfully!")
+#     except Exception as e:
+#         print(f">>> CRASH during model load: {e}")
+#         raise
+#
+#     yield
+#
+#     print(">>> Shutting down...")
+#
+#
+# app = FastAPI(
+#     title="Deepfake Image Detection API",
+#     version="1.0.0",
+#     lifespan=lifespan
+# )
+#
+#
+# # ==============================
+# # HEALTH CHECK
+# # ==============================
+#
+# @app.get("/")
+# def root():
+#     return {"status": "API running", "model_loaded": detector is not None}
+#
+#
+# # ==============================
+# # SINGLE IMAGE PREDICTION
+# # ==============================
+#
+# @app.post("/predict")
+# async def predict_image(file: UploadFile = File(...)):
+#     if detector is None:
+#         raise HTTPException(status_code=500, detail="Model not loaded")
+#
+#     if not file.content_type.startswith("image/"):
+#         raise HTTPException(status_code=400, detail="File must be an image")
+#
+#     try:
+#         contents = await file.read()
+#         image = Image.open(io.BytesIO(contents)).convert("RGB")
+#
+#         transform = detector.transform
+#         image_tensor = transform(image).unsqueeze(0).to(detector.device)
+#
+#         detector.model.eval()
+#         with torch.no_grad():
+#             logits = detector.model(image_tensor)
+#             probabilities = torch.softmax(logits, dim=1)
+#
+#         predicted_class = torch.argmax(probabilities, dim=1).item()
+#
+#         return JSONResponse({
+#             "filename": file.filename,
+#             "verdict": "DEEPFAKE" if predicted_class == 1 else "REAL",
+#             "fake_probability": float(probabilities[0, 1].item())
+#         })
+#
+#     except Exception as e:
+#         logger.error(f"Prediction error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+#
+#
+# # ==============================
+# # RUN SERVER (HF Spaces = port 7860)
+# # ==============================
+#
+# if __name__ == "__main__":
+#     uvicorn.run(
+#         "api_server:app",
+#         host="0.0.0.0",
+#         port=7860,
+#         reload=False
+#     )
+
+
 
 import os
 import io
@@ -141,7 +448,7 @@ from efficientnet_image_detector import DetectorInference
 # ==============================
 
 MODEL_PATH = "models/final_model_2.pth"
-DEVICE = "auto"
+DEVICE = "cpu"
 IMAGE_SIZE = 380
 
 # ==============================
@@ -165,7 +472,8 @@ def ensure_model_exists():
         hf_hub_download(
             repo_id="RK-2910/deepfake-efficientnet-b4",
             filename="models/final_model_2.pth",
-            local_dir="."
+            local_dir=".",
+            token=os.environ.get("HF_TOKEN")
         )
         print(">>> Model downloaded successfully.")
     else:
@@ -183,7 +491,6 @@ async def lifespan(app: FastAPI):
     print(">>> Lifespan started")
     print(f">>> MODEL_PATH = {MODEL_PATH}")
 
-    # Download model if not present
     ensure_model_exists()
 
     print(f">>> File exists: {os.path.exists(MODEL_PATH)}")
@@ -247,13 +554,10 @@ async def predict_image(file: UploadFile = File(...)):
             probabilities = torch.softmax(logits, dim=1)
 
         predicted_class = torch.argmax(probabilities, dim=1).item()
-        confidence = probabilities[0, predicted_class].item()
 
         return JSONResponse({
             "filename": file.filename,
             "verdict": "DEEPFAKE" if predicted_class == 1 else "REAL",
-            "confidence": float(confidence),
-            "real_probability": float(probabilities[0, 0].item()),
             "fake_probability": float(probabilities[0, 1].item())
         })
 
@@ -267,244 +571,11 @@ async def predict_image(file: UploadFile = File(...)):
 # ==============================
 
 if __name__ == "__main__":
-    is_production = os.getenv("RAILWAY_ENVIRONMENT") is not None
-
+    print(">>> Local test URL : http://localhost:7860")
+    print(">>> Swagger UI     : http://localhost:7860/docs")
     uvicorn.run(
         "api_server:app",
-        host="0.0.0.0" if is_production else "127.0.0.1",
-        port=int(os.getenv("PORT", 8000)),
-        reload=not is_production
+        host="0.0.0.0",   # required for Docker / HF Spaces — use localhost:7860 in browser
+        port=7860,
+        reload=False
     )
-
-
-
-
-
-
-
-
-# import os
-# import io
-# import logging
-# from typing import List
-# from contextlib import asynccontextmanager
-# import torch
-# from fastapi import FastAPI, UploadFile, File, HTTPException, Query
-# from fastapi.responses import JSONResponse
-# from PIL import Image
-# import uvicorn
-# from efficientnet_image_detector import DetectorInference
-#
-# # ==============================
-# # CONFIGURATION
-# # ==============================
-# MODEL_PATH       = "models/final_model_2.pth"
-# DEVICE           = "auto"
-# IMAGE_SIZE       = 380
-# DEFAULT_THRESHOLD = 0.5   # if fake_probability >= threshold → DEEPFAKE
-#
-# # ==============================
-# # LOGGING
-# # ==============================
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-#
-# detector = None
-#
-# # ==============================
-# # LIFESPAN HANDLER
-# # ==============================
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     global detector
-#     if not os.path.exists(MODEL_PATH):
-#         logger.error(f"Model not found at {MODEL_PATH}")
-#         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
-#     logger.info("Loading model...")
-#     detector = DetectorInference(
-#         model_path=MODEL_PATH,
-#         device=DEVICE,
-#         image_size=IMAGE_SIZE
-#     )
-#     logger.info("Model loaded successfully.")
-#     yield
-#     logger.info("Shutting down API...")
-#
-# app = FastAPI(
-#     title="Deepfake Image Detection API",
-#     version="1.0.0",
-#     lifespan=lifespan
-# )
-#
-# # ==============================
-# # THRESHOLD HELPER
-# # ==============================
-# def apply_threshold(fake_prob: float, threshold: float) -> dict:
-#     """
-#     Verdict logic:
-#       - fake_prob >= threshold          → DEEPFAKE
-#       - fake_prob <  threshold          → REAL
-#       - near boundary (±0.05)           → flag as low-confidence
-#     """
-#     is_fake        = fake_prob >= threshold
-#     verdict        = "DEEPFAKE" if is_fake else "REAL"
-#     confidence     = fake_prob if is_fake else (1.0 - fake_prob)
-#     low_confidence = abs(fake_prob - threshold) < 0.05
-#
-#     return {
-#         "verdict":        verdict,
-#         "confidence":     round(confidence, 6),
-#         "low_confidence": low_confidence,
-#         "threshold_used": round(threshold, 4),
-#     }
-#
-# # ==============================
-# # HEALTH CHECK
-# # ==============================
-# @app.get("/")
-# def root():
-#     return {
-#         "status":           "API running",
-#         "model_loaded":     detector is not None,
-#         "default_threshold": DEFAULT_THRESHOLD,
-#     }
-#
-# # ==============================
-# # SINGLE IMAGE PREDICTION
-# # ==============================
-# @app.post("/predict")
-# async def predict_image(
-#     file:      UploadFile = File(...),
-#     threshold: float      = Query(
-#         default=DEFAULT_THRESHOLD,
-#         ge=0.0,
-#         le=1.0,
-#         description="Confidence threshold for DEEPFAKE verdict (0.0–1.0). "
-#                     "Raise to reduce false positives; lower to reduce false negatives."
-#     )
-# ):
-#     if detector is None:
-#         raise HTTPException(status_code=500, detail="Model not loaded")
-#     if not file.content_type.startswith("image/"):
-#         raise HTTPException(status_code=400, detail="File must be an image")
-#
-#     try:
-#         contents     = await file.read()
-#         image        = Image.open(io.BytesIO(contents)).convert("RGB")
-#         image_tensor = detector.transform(image).unsqueeze(0).to(detector.device)
-#
-#         detector.model.eval()
-#         with torch.no_grad():
-#             logits        = detector.model(image_tensor)
-#             probabilities = torch.softmax(logits, dim=1)
-#
-#         real_prob = float(probabilities[0, 0].item())
-#         fake_prob = float(probabilities[0, 1].item())
-#
-#         result = apply_threshold(fake_prob, threshold)
-#
-#         logger.info(
-#             f"[{file.filename}] fake_prob={fake_prob:.4f} "
-#             f"threshold={threshold} → {result['verdict']}"
-#             + (" ⚠️ LOW CONFIDENCE" if result["low_confidence"] else "")
-#         )
-#
-#         return JSONResponse({
-#             "filename":         file.filename,
-#             "verdict":          result["verdict"],
-#             "confidence":       result["confidence"],
-#             "low_confidence":   result["low_confidence"],
-#             "threshold_used":   result["threshold_used"],
-#             "real_probability": round(real_prob, 6),
-#             "fake_probability": round(fake_prob, 6),
-#         })
-#
-#     except Exception as e:
-#         logger.error(f"Prediction error: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))
-#
-# # ==============================
-# # BATCH PREDICTION
-# # ==============================
-# @app.post("/predict/batch")
-# async def predict_batch(
-#     files:     List[UploadFile] = File(...),
-#     threshold: float            = Query(
-#         default=DEFAULT_THRESHOLD,
-#         ge=0.0,
-#         le=1.0,
-#         description="Shared confidence threshold applied to all images in the batch."
-#     )
-# ):
-#     if detector is None:
-#         raise HTTPException(status_code=500, detail="Model not loaded")
-#     if not files:
-#         raise HTTPException(status_code=400, detail="No files provided")
-#
-#     results = []
-#     for file in files:
-#         if not file.content_type.startswith("image/"):
-#             results.append({
-#                 "filename": file.filename,
-#                 "error":    "Not a valid image file"
-#             })
-#             continue
-#
-#         try:
-#             contents     = await file.read()
-#             image        = Image.open(io.BytesIO(contents)).convert("RGB")
-#             image_tensor = detector.transform(image).unsqueeze(0).to(detector.device)
-#
-#             detector.model.eval()
-#             with torch.no_grad():
-#                 logits        = detector.model(image_tensor)
-#                 probabilities = torch.softmax(logits, dim=1)
-#
-#             real_prob = float(probabilities[0, 0].item())
-#             fake_prob = float(probabilities[0, 1].item())
-#             result    = apply_threshold(fake_prob, threshold)
-#
-#             logger.info(
-#                 f"[{file.filename}] fake_prob={fake_prob:.4f} "
-#                 f"threshold={threshold} → {result['verdict']}"
-#                 + (" ⚠️ LOW CONFIDENCE" if result["low_confidence"] else "")
-#             )
-#
-#             results.append({
-#                 "filename":         file.filename,
-#                 "verdict":          result["verdict"],
-#                 "confidence":       result["confidence"],
-#                 "low_confidence":   result["low_confidence"],
-#                 "threshold_used":   result["threshold_used"],
-#                 "real_probability": round(real_prob, 6),
-#                 "fake_probability": round(fake_prob, 6),
-#             })
-#
-#         except Exception as e:
-#             logger.error(f"Error processing {file.filename}: {e}")
-#             results.append({
-#                 "filename": file.filename,
-#                 "error":    str(e)
-#             })
-#
-#     summary = {
-#         "total":          len(results),
-#         "deepfakes":      sum(1 for r in results if r.get("verdict") == "DEEPFAKE"),
-#         "real":           sum(1 for r in results if r.get("verdict") == "REAL"),
-#         "errors":         sum(1 for r in results if "error" in r),
-#         "low_confidence": sum(1 for r in results if r.get("low_confidence")),
-#         "threshold_used": threshold,
-#     }
-#
-#     return JSONResponse({"summary": summary, "results": results})
-#
-# # ==============================
-# # RUN SERVER
-# # ==============================
-# if __name__ == "__main__":
-#     uvicorn.run(
-#         "api_server:app",
-#         host="127.0.0.1",
-#         port=8000,
-#         reload=True
-#     )
